@@ -1,12 +1,16 @@
-# Architecture
-This document describes the high-level architecture of Boss Room.
-If you want to familiarize yourself with the code base, you are just in the right place!
+# Architecture (設計)
 
-Boss Room is an 8-player co-op RPG game experience, where players collaborate to take down some minions, and then a boss. Players can select between classes that each have skills with didactically interesting networking characteristics. Control model is click-to-move, with skills triggered by mouse button or hotkey. 
+このドキュメントでは Boss Room のハイレベルなアーキテクチャについて説明します．コードベースに慣れておきたい方には最適な場所だと思います．
 
-Code is organized into three separate assemblies: `Client`, `Server` and `Shared` (which, as it's name implies, contains shared functionality that both client and the server require).
+Boss Room は8人で協力してミニオンを倒し，ボスを倒すRPGゲームです．
+プレイヤーは教育的に興味深いネットワーク特性を持つスキルを持つクラスを選択できます．
+コントロールモデルは Click to Move (クリック先に動く)で、スキルはマウスボタンかホットキーで起動します．
 
-## Host model
+コードは3つの独立したアセンブリで構成されています．
+コードは，Client，Server，Shared（その名の通り，Client と Server の両方が必要とする共有機能を含む）の3つの独立したアセンブリに整理されています．
+
+## Host model (ホストモデル)
+
 Boss Room uses a Host model for its server. This means one client acts as a server and hosts the other clients. 
 
 A common pitfall of this pattern is writing the game in such a way that it is virtually impossible to adapt to a dedicated server model. 
@@ -21,6 +25,22 @@ This approach works, but requires some care:
  - you also need to take care about code executing in `Start` and `Awake`: if this code runs contemporaneously with the `NetworkingManager`'s initialization, it may not know yet whether the player is a host or client.
  - We judged this extra complexity worth it, as it provides a clear road-map to supporting true dedicated servers. 
  - Client server separation also allows not having god-classes where both client and server code are intermingled. This way, when reading server code, you do not have to mentally skip client code and vice versa. This helps making bigger classes more readable and maintainable. Please note that this pattern can be applied on a case by case basis. If your class never grows too big, having a single `NetworkBehaviour` is perfectly fine.
+
+Boss Room では，サーバーに Host Model を採用しています．
+これは1つのクライアントがサーバとして機能し，他のクライアントをホストすることを意味します．
+
+このパターンでよくある落とし穴は，専用のサーバーモデル(DGS)に対応することが事実上不可能な方法でゲームを書いてしまうことです．
+
+そこで私たちは，クライアントとサーバーのロジックを（1つのモジュールにまとめるのではなく）コンポジションモデルで構成することで，この問題を解決しようとしました．
+ - ホスト側では，各ゲームオブジェクトが「{Server，Shared，Client}」というコンポーネントを持っています．
+ - ゲームを専用サーバーとして起動した場合，Client コンポーネントは自ら無効化され，「{Server, Shared}」コンポーネントが残ります．
+ - クライアントとして起動すると，`{Shared, Client}`コンポーネントの補完的なセットが得られます．
+
+この方法は有効ですが、いくつかの注意が必要です。
+ - Base Class を共有するサーバーとクライアントがある場合，Shared のコードがホスト上で2回実行されることを覚えておく必要があります．
+ - また，`Start`と`Awake`で実行されるコードにも注意が必要です．このコードが`NetworkingManager`の初期化と同時に実行される場合，プレイヤーがホストかクライアントかをまだ知らない可能性があります．
+ - この複雑さは，真の専用サーバーをサポートするための明確な道筋を提供するものであり，価値があると判断しました．
+ - また，Client と Server のコードが混在している神クラスを持たないようにするために，Client と Server を分離しました．これにより，Serverのコードを読むときに，Client のコードを読み飛ばしたり，その逆をする必要がなくなります．これにより，大きなクラスをより読みやすく，メンテナンスしやすくすることができます．なお，このパターンはケースバイケースで適用できます．もしクラスが大きくならないのであれば，`NetworkBehaviour`を1つにしても全く問題ありません．
 
 ## Connection flow
 The Boss Room network connection flow is owned by the `GameNetPortal`:
