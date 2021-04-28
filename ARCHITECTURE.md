@@ -11,21 +11,6 @@ Boss Room は8人で協力してミニオンを倒し，ボスを倒すRPGゲー
 
 ## Host model (ホストモデル)
 
-Boss Room uses a Host model for its server. This means one client acts as a server and hosts the other clients. 
-
-A common pitfall of this pattern is writing the game in such a way that it is virtually impossible to adapt to a dedicated server model. 
-
-We attempted to combat this by using a compositional model for our client and server logic (rather than having it all combined is single modules):
- - On the Host, each GameObject has `{Server, Shared, Client}` components. 
- - If you start up the game as a dedicated server, the client components will disable themselves, leaving you with `{Server, Shared}` components.
- - If you start up as a client, you get the complementary set of `{Shared, Client}` components. 
-
-This approach works, but requires some care: 
- - if you have server and clients of a shared base class, you need to remember that the shared code will run twice on the host; 
- - you also need to take care about code executing in `Start` and `Awake`: if this code runs contemporaneously with the `NetworkingManager`'s initialization, it may not know yet whether the player is a host or client.
- - We judged this extra complexity worth it, as it provides a clear road-map to supporting true dedicated servers. 
- - Client server separation also allows not having god-classes where both client and server code are intermingled. This way, when reading server code, you do not have to mentally skip client code and vice versa. This helps making bigger classes more readable and maintainable. Please note that this pattern can be applied on a case by case basis. If your class never grows too big, having a single `NetworkBehaviour` is perfectly fine.
-
 Boss Room では，サーバーに Host Model を採用しています．
 これは1つのクライアントがサーバとして機能し，他のクライアントをホストすることを意味します．
 
